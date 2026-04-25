@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowChain — Coordinación incentivada para movilidad urbana</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen">
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.18),_transparent_35%),radial-gradient(circle_at_80%_20%,_rgba(16,185,129,0.12),_transparent_25%)]"></div>
+
+  <main class="relative z-10 max-w-7xl mx-auto px-6 py-8">
+    <header class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-200">
+          <span class="h-2 w-2 rounded-full bg-cyan-300"></span>
+          Coordinación incentivada para movilidad urbana
+        </div>
+        <h1 class="mt-4 text-4xl md:text-6xl font-black tracking-tight">FlowChain</h1>
+        <p class="mt-4 max-w-2xl text-lg md:text-xl text-slate-300">
+          No optimizamos un coche. <span class="text-white font-semibold">Coordinamos el comportamiento de muchos</span>
+          para reducir congestión con incentivos verificables.
+        </p>
+      </div>
+
+      <div class="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-4 min-w-[280px]">
+        <div class="text-sm text-slate-400">Wallet</div>
+        <div id="walletStatus" class="mt-2 text-lg font-semibold text-slate-100">No conectada</div>
+        <button id="connectWalletBtn" class="mt-4 w-full rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-300 transition">
+          Conectar wallet
+        </button>
+        <div id="walletHint" class="mt-3 text-xs text-slate-400">Demo lista con o sin MetaMask.</div>
+      </div>
+    </header>
+
+    <section class="mt-10 grid gap-6 lg:grid-cols-[1.35fr_0.95fr]">
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div class="text-sm uppercase tracking-[0.2em] text-slate-400">Escenario urbano</div>
+            <h2 class="mt-2 text-2xl font-bold">Descongestionar un corredor vial en tiempo real</h2>
+          </div>
+          <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200">
+            Estado de red: <span id="networkState" class="font-bold">Presión alta</span>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-2">
+          <button id="routeA" class="route-card rounded-2xl border border-rose-400/20 bg-rose-400/10 p-5 text-left transition hover:scale-[1.01]">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-rose-200">Ruta A</span>
+              <span class="rounded-full bg-rose-500/20 px-3 py-1 text-xs text-rose-200">Congestionada</span>
+            </div>
+            <div class="mt-4 text-3xl font-black">18 min</div>
+            <p class="mt-3 text-sm text-slate-300">La opción egoísta: más rápida para una persona, peor para el sistema.</p>
+            <div class="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+              <div class="h-full w-[82%] bg-rose-400"></div>
+            </div>
+            <div class="mt-2 text-xs text-slate-400">Índice de congestión: 82/100</div>
+          </button>
+
+          <button id="routeB" class="route-card rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-5 text-left transition hover:scale-[1.01] ring-2 ring-emerald-300/40">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-emerald-200">Ruta B</span>
+              <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-200">Recomendada</span>
+            </div>
+            <div class="mt-4 text-3xl font-black">22 min</div>
+            <p class="mt-3 text-sm text-slate-300">Una decisión individual un poco menos óptima que mejora el flujo colectivo.</p>
+            <div class="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+              <div class="h-full w-[39%] bg-emerald-400"></div>
+            </div>
+            <div class="mt-2 text-xs text-slate-400">Índice de congestión: 39/100</div>
+          </button>
+        </div>
+
+        <div class="mt-6 rounded-2xl border border-cyan-400/20 bg-slate-900/70 p-5">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div class="text-sm text-slate-400">Decisión del usuario</div>
+              <div id="decisionLabel" class="mt-1 text-xl font-bold">Acepta la ruta alternativa para desbloquear recompensa</div>
+            </div>
+            <button id="acceptRouteBtn" class="rounded-xl bg-white px-5 py-3 font-semibold text-slate-950 hover:bg-slate-200 transition">
+              Aceptar ruta alternativa
+            </button>
+          </div>
+
+          <div class="mt-5 grid gap-4 md:grid-cols-3">
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="text-xs uppercase tracking-wide text-slate-400">Reward</div>
+              <div id="rewardUnlocked" class="mt-2 text-3xl font-black text-cyan-300">0 FLOW</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="text-xs uppercase tracking-wide text-slate-400">Impacto sistémico</div>
+              <div id="impactValue" class="mt-2 text-3xl font-black text-emerald-300">0%</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div class="text-xs uppercase tracking-wide text-slate-400">Contribuciones</div>
+              <div id="contributionCount" class="mt-2 text-3xl font-black text-violet-300">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-6">
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xl font-bold">Settlement layer</h3>
+            <span id="chainModeBadge" class="rounded-full bg-amber-400/15 px-3 py-1 text-xs text-amber-200">Simulación creíble</span>
+          </div>
+          <p class="mt-3 text-sm text-slate-300">Blockchain no guía el vehículo. Registra incentivos, confianza y trazabilidad.</p>
+
+          <button id="claimBtn" class="mt-5 w-full rounded-xl bg-violet-400 px-4 py-3 font-semibold text-slate-950 hover:bg-violet-300 transition disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400" disabled>
+            Claim reward
+          </button>
+
+          <div class="mt-5 rounded-2xl border border-white/10 bg-slate-900/80 p-4">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Registro de transacción</div>
+            <div id="txStatus" class="mt-2 text-sm text-slate-300">Esperando una contribución...</div>
+            <div id="txHash" class="mt-3 break-all font-mono text-xs text-cyan-300">—</div>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+          <h3 class="text-xl font-bold">Por qué esto importa</h3>
+          <ul class="mt-4 space-y-3 text-sm text-slate-300">
+            <li>• El tráfico no es solo rutas. Es alineación de incentivos.</li>
+            <li>• Cada decisión individual puede generar beneficio sistémico.</li>
+            <li>• La recompensa verificable vuelve visible la cooperación urbana.</li>
+          </ul>
+        </div>
+
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+          <div class="text-sm text-slate-400">Ledger local de demo</div>
+          <div id="ledger" class="mt-4 space-y-3 text-sm text-slate-300">
+            <div class="rounded-2xl border border-dashed border-white/10 p-4 text-slate-500">Sin eventos todavía.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      selectedRoute: 'B',
+      reward: 0,
+      impact: 0,
+      contributions: 0,
+      wallet: null,
+      mode: 'simulation',
+      contractAddress: '',
+      abi: [
+        'function claimReward(uint256 amount) public',
+        'function rewards(address) public view returns (uint256)'
+      ]
+    };
+
+    const routeA = document.getElementById('routeA');
+    const routeB = document.getElementById('routeB');
+    const acceptRouteBtn = document.getElementById('acceptRouteBtn');
+    const claimBtn = document.getElementById('claimBtn');
+    const connectWalletBtn = document.getElementById('connectWalletBtn');
+    const walletStatus = document.getElementById('walletStatus');
+    const walletHint = document.getElementById('walletHint');
+    const decisionLabel = document.getElementById('decisionLabel');
+    const rewardUnlocked = document.getElementById('rewardUnlocked');
+    const impactValue = document.getElementById('impactValue');
+    const contributionCount = document.getElementById('contributionCount');
+    const txStatus = document.getElementById('txStatus');
+    const txHash = document.getElementById('txHash');
+    const ledger = document.getElementById('ledger');
+    const chainModeBadge = document.getElementById('chainModeBadge');
+
+    function selectRoute(route) {
+      state.selectedRoute = route;
+      routeA.classList.toggle('ring-2', route === 'A');
+      routeA.classList.toggle('ring-rose-300/40', route === 'A');
+      routeB.classList.toggle('ring-2', route === 'B');
+      routeB.classList.toggle('ring-emerald-300/40', route === 'B');
+      decisionLabel.textContent = route === 'B'
+        ? 'Ruta B seleccionada: cooperación urbana con recompensa'
+        : 'Ruta A seleccionada: decisión individual sin incentivo';
+    }
+
+    function randomHash() {
+      const chars = 'abcdef0123456789';
+      let hash = '0x';
+      for (let i = 0; i < 64; i++) hash += chars[Math.floor(Math.random() * chars.length)];
+      return hash;
+    }
+
+    function renderLedger(entry) {
+      if (ledger.textContent.includes('Sin eventos')) ledger.innerHTML = '';
+      const div = document.createElement('div');
+      div.className = 'rounded-2xl border border-white/10 bg-slate-900/70 p-4';
+      div.innerHTML = `
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="font-semibold text-white">${entry.title}</div>
+          <div class="text-xs text-slate-500">${entry.time}</div>
+        </div>
+        <div class="mt-2 text-slate-300">${entry.body}</div>
+        <div class="mt-2 font-mono text-xs text-cyan-300 break-all">${entry.hash}</div>
+      `;
+      ledger.prepend(div);
+    }
+
+    function unlockReward() {
+      if (state.selectedRoute !== 'B') {
+        decisionLabel.textContent = 'Para demostrar impacto sistémico, elige la Ruta B.';
+        return;
+      }
+      state.reward = 10;
+      state.impact = 23;
+      state.contributions += 1;
+      rewardUnlocked.textContent = `${state.reward} FLOW`;
+      impactValue.textContent = `${state.impact}%`;
+      contributionCount.textContent = state.contributions;
+      txStatus.textContent = 'Reward desbloqueado. Lista para reclamar en blockchain o simulación.';
+      claimBtn.disabled = false;
+      acceptRouteBtn.textContent = 'Ruta alternativa aceptada';
+      acceptRouteBtn.disabled = true;
+      acceptRouteBtn.classList.add('opacity-70');
+    }
+
+    async function connectWallet() {
+      if (!window.ethereum) {
+        walletHint.textContent = 'MetaMask no detectado. Puedes seguir con simulación y aun así hacer una demo fuerte.';
+        state.mode = 'simulation';
+        return;
+      }
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const accounts = await provider.send('eth_requestAccounts', []);
+        state.wallet = accounts[0];
+        walletStatus.textContent = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
+        walletHint.textContent = 'Wallet conectada. Si luego agregas contrato, puedes reclamar on-chain real.';
+      } catch (error) {
+        walletHint.textContent = 'Conexión cancelada. Seguimos en modo demo sin problema.';
+      }
+    }
+
+    async function claimReward() {
+      const hash = randomHash();
+      const time = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+      if (window.ethereum && state.wallet && state.contractAddress) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const signer = provider.getSigner();
+          const contract = new ethers.Contract(state.contractAddress, state.abi, signer);
+          const tx = await contract.claimReward(state.reward);
+          txStatus.textContent = 'Transacción enviada a testnet. Esperando confirmación...';
+          txHash.textContent = tx.hash;
+          chainModeBadge.textContent = 'On-chain real';
+          chainModeBadge.className = 'rounded-full bg-emerald-400/15 px-3 py-1 text-xs text-emerald-200';
+          await tx.wait();
+          txStatus.textContent = 'Reward registrada on-chain correctamente.';
+          renderLedger({
+            title: 'Contribución registrada on-chain',
+            body: `El usuario aceptó la ruta alternativa y reclamó ${state.reward} FLOW en testnet.`,
+            hash: tx.hash,
+            time
+          });
+          claimBtn.disabled = true;
+          return;
+        } catch (error) {
+          txStatus.textContent = 'Falló la escritura on-chain. Se muestra fallback de simulación para no romper la demo.';
+        }
+      }
+
+      chainModeBadge.textContent = 'Simulación creíble';
+      chainModeBadge.className = 'rounded-full bg-amber-400/15 px-3 py-1 text-xs text-amber-200';
+      txStatus.textContent = 'Reward registrada en settlement layer simulado.';
+      txHash.textContent = hash;
+      renderLedger({
+        title: 'Contribución registrada',
+        body: `El usuario aceptó la ruta alternativa y desbloqueó ${state.reward} FLOW como incentivo verificable.`,
+        hash,
+        time
+      });
+      claimBtn.disabled = true;
+    }
+
+    routeA.addEventListener('click', () => selectRoute('A'));
+    routeB.addEventListener('click', () => selectRoute('B'));
+    acceptRouteBtn.addEventListener('click', unlockReward);
+    claimBtn.addEventListener('click', claimReward);
+    connectWalletBtn.addEventListener('click', connectWallet);
+    selectRoute('B');
+  </script>
+</body>
+</html>
