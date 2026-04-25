@@ -1,20 +1,28 @@
 # FlowChain MVP
 
 ## Qué incluye
-- Landing/demo en una sola página
+- App en Next.js con App Router
+- Demo de una sola página
 - Flujo de ruta alternativa -> reward -> claim
-- Funciona en modo simulación por defecto
-- Lista para conectar WalletConnect con project ID configurado
-- Soporta contrato real si luego agregas `state.contractAddress` en `index.html`
+- WalletConnect-first con project ID configurado
+- Fallback de simulación para no romper la demo
+- Soporta contrato real si luego agregas `contractAddress` en `app/page.js`
 
 ## Cómo correrlo
 ```bash
 cd flowchain-mvp
-python3 -m http.server 3000
+npm install
+npm run dev
 ```
 
 Luego abre:
 - http://localhost:3000
+
+## Build de producción
+```bash
+npm run build
+npm start
+```
 
 ## Demo narrativa
 1. Mostrar Ruta A vs Ruta B
