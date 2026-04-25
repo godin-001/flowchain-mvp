@@ -30,7 +30,7 @@
         <button id="connectWalletBtn" class="mt-4 w-full rounded-xl bg-cyan-400 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-300 transition">
           Conectar wallet
         </button>
-        <div id="walletHint" class="mt-3 text-xs text-slate-400">Demo lista con o sin MetaMask.</div>
+        <div id="walletHint" class="mt-3 text-xs text-slate-400">Demo lista con o sin wallet. Conexión principal: WalletConnect.</div>
       </div>
     </header>
 
@@ -140,7 +140,9 @@
     </section>
   </main>
 
-  <script>
+  <script type="module">
+    import EthereumProvider from 'https://esm.sh/@walletconnect/ethereum-provider@2.23.9';
+
     const state = {
       selectedRoute: 'B',
       reward: 0,
@@ -149,6 +151,10 @@
       wallet: null,
       mode: 'simulation',
       contractAddress: '',
+      projectId: '571aaea1a336af46ff3121ae225db60a',
+      chainId: 84532,
+      walletConnectProvider: null,
+      ethersProvider: null,
       abi: [
         'function claimReward(uint256 amount) public',
         'function rewards(address) public view returns (uint256)'
@@ -204,6 +210,14 @@
       ledger.prepend(div);
     }
 
+    function setConnectedState(address) {
+      state.wallet = address;
+      walletStatus.textContent = `${address.slice(0, 6)}...${address.slice(-4)}`;
+      walletHint.textContent = 'WalletConnect activo. Si agregas contrato, el claim puede quedar on-chain real.';
+      chainModeBadge.textContent = 'WalletConnect listo';
+      chainModeBadge.className = 'rounded-full bg-cyan-400/15 px-3 py-1 text-xs text-cyan-200';
+    }
+
     function unlockReward() {
       if (state.selectedRoute !== 'B') {
         decisionLabel.textContent = 'Para demostrar impacto sistémico, elige la Ruta B.';
@@ -215,7 +229,7 @@
       rewardUnlocked.textContent = `${state.reward} FLOW`;
       impactValue.textContent = `${state.impact}%`;
       contributionCount.textContent = state.contributions;
-      txStatus.textContent = 'Reward desbloqueado. Lista para reclamar en blockchain o simulación.';
+      txStatus.textContent = 'Reward desbloqueado. Lista para reclamar con WalletConnect o simulación.';
       claimBtn.disabled = false;
       acceptRouteBtn.textContent = 'Ruta alternativa aceptada';
       acceptRouteBtn.disabled = true;
@@ -223,19 +237,41 @@
     }
 
     async function connectWallet() {
-      if (!window.ethereum) {
-        walletHint.textContent = 'MetaMask no detectado. Puedes seguir con simulación y aun así hacer una demo fuerte.';
-        state.mode = 'simulation';
-        return;
-      }
+      connectWalletBtn.disabled = true;
+      connectWalletBtn.textContent = 'Abriendo WalletConnect...';
+
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const accounts = await provider.send('eth_requestAccounts', []);
-        state.wallet = accounts[0];
-        walletStatus.textContent = `${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`;
-        walletHint.textContent = 'Wallet conectada. Si luego agregas contrato, puedes reclamar on-chain real.';
+        if (!state.walletConnectProvider) {
+          state.walletConnectProvider = await EthereumProvider.init({
+            projectId: state.projectId,
+            chains: [state.chainId],
+            optionalChains: [state.chainId],
+            showQrModal: true,
+            methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData', 'eth_sign'],
+            optionalMethods: ['eth_accounts', 'eth_requestAccounts', 'wallet_switchEthereumChain'],
+            rpcMap: {
+              [state.chainId]: 'https://sepolia.base.org'
+            },
+            metadata: {
+              name: 'FlowChain',
+              description: 'Coordinación incentivada para movilidad urbana',
+              url: window.location.origin,
+              icons: ['https://flowchain-mvp.vercel.app/favicon.ico']
+            }
+          });
+        }
+
+        await state.walletConnectProvider.enable();
+        state.ethersProvider = new ethers.providers.Web3Provider(state.walletConnectProvider);
+        const signer = state.ethersProvider.getSigner();
+        const address = await signer.getAddress();
+        setConnectedState(address);
       } catch (error) {
-        walletHint.textContent = 'Conexión cancelada. Seguimos en modo demo sin problema.';
+        walletHint.textContent = 'WalletConnect no pudo conectarse en este intento. La demo sigue viva con simulación.';
+        state.mode = 'simulation';
+      } finally {
+        connectWalletBtn.disabled = false;
+        connectWalletBtn.textContent = 'Conectar wallet';
       }
     }
 
@@ -243,13 +279,12 @@
       const hash = randomHash();
       const time = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-      if (window.ethereum && state.wallet && state.contractAddress) {
+      if (state.ethersProvider && state.wallet && state.contractAddress) {
         try {
-          const provider = new ethers.providers.Web3Provider(window.ethereum);
-          const signer = provider.getSigner();
+          const signer = state.ethersProvider.getSigner();
           const contract = new ethers.Contract(state.contractAddress, state.abi, signer);
           const tx = await contract.claimReward(state.reward);
-          txStatus.textContent = 'Transacción enviada a testnet. Esperando confirmación...';
+          txStatus.textContent = 'Transacción enviada por WalletConnect. Esperando confirmación...';
           txHash.textContent = tx.hash;
           chainModeBadge.textContent = 'On-chain real';
           chainModeBadge.className = 'rounded-full bg-emerald-400/15 px-3 py-1 text-xs text-emerald-200';
@@ -257,14 +292,14 @@
           txStatus.textContent = 'Reward registrada on-chain correctamente.';
           renderLedger({
             title: 'Contribución registrada on-chain',
-            body: `El usuario aceptó la ruta alternativa y reclamó ${state.reward} FLOW en testnet.`,
+            body: `El usuario aceptó la ruta alternativa y reclamó ${state.reward} FLOW vía WalletConnect.`,
             hash: tx.hash,
             time
           });
           claimBtn.disabled = true;
           return;
         } catch (error) {
-          txStatus.textContent = 'Falló la escritura on-chain. Se muestra fallback de simulación para no romper la demo.';
+          txStatus.textContent = 'Falló la escritura on-chain. Se activa fallback de simulación para no romper la demo.';
         }
       }
 
