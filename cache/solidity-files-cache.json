@@ -1,0 +1,41 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/home/godin/.openclaw/workspaces/godin-slot-24/flowchain-mvp/contracts/FlowChainRewards.sol": {
+      "lastModificationDate": 1777082332866,
+      "contentHash": "464536404a0a0494a12154a68950c943",
+      "sourceName": "contracts/FlowChainRewards.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "FlowChainRewards"
+      ]
+    }
+  }
+}

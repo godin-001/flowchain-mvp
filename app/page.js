@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 
 const PROJECT_ID = '571aaea1a336af46ff3121ae225db60a';
-const CHAIN_ID = 84532;
+const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 84532);
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || '';
 const CONTRACT_ABI = [
-  'function claimReward(uint256 amount) public',
-  'function rewards(address) public view returns (uint256)'
+  'function claimReward(bytes32 routeId, uint256 amount) public',
+  'function rewards(address) public view returns (uint256)',
+  'function claimedRouteIds(address, bytes32) public view returns (bool)'
 ];
 
 function randomHash() {
@@ -30,6 +32,7 @@ export default function HomePage() {
   const [decisionLabel, setDecisionLabel] = useState('Acepta la ruta alternativa para desbloquear recompensa');
   const [txStatus, setTxStatus] = useState('Esperando una contribución...');
   const [txHash, setTxHash] = useState('—');
+  const [claimedOnChain, setClaimedOnChain] = useState(null);
   const [ledger, setLedger] = useState([]);
   const [chainBadge, setChainBadge] = useState({ text: 'Simulación creíble', className: 'bg-amber-400/15 text-amber-200' });
   const [acceptLocked, setAcceptLocked] = useState(false);
@@ -37,10 +40,9 @@ export default function HomePage() {
   const [connecting, setConnecting] = useState(false);
   const [walletProvider, setWalletProvider] = useState(null);
   const [ethersProvider, setEthersProvider] = useState(null);
-
-  const contractAddress = '';
-
   const walletStatus = useMemo(() => (wallet ? shortAddress(wallet) : 'No conectada'), [wallet]);
+  const rewardRouteId = useMemo(() => `FLOWCHAIN-${selectedRoute}`, [selectedRoute]);
+  const isContractReady = Boolean(CONTRACT_ADDRESS);
 
   function selectRoute(route) {
     setSelectedRoute(route);
@@ -107,8 +109,19 @@ export default function HomePage() {
 
       setEthersProvider(nextEthersProvider);
       setWallet(address);
-      setWalletHint('WalletConnect activo. Si agregas contrato, el claim puede quedar on-chain real.');
+      setWalletHint(
+        isContractReady
+          ? 'WalletConnect activo. El contrato está configurado para claim on-chain.'
+          : 'WalletConnect activo. Falta configurar NEXT_PUBLIC_CONTRACT_ADDRESS para el claim on-chain.'
+      );
       setChainBadge({ text: 'WalletConnect listo', className: 'bg-cyan-400/15 text-cyan-200' });
+
+      if (isContractReady) {
+        const { ethers } = await import('ethers');
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, nextEthersProvider);
+        const currentRewards = await contract.rewards(address);
+        setClaimedOnChain(Number(currentRewards.toString()));
+      }
     } catch (error) {
       setWalletHint('WalletConnect no pudo conectarse en este intento. La demo sigue viva con simulación.');
     } finally {
@@ -119,12 +132,21 @@ export default function HomePage() {
   async function claimReward() {
     const time = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 
-    if (ethersProvider && wallet && contractAddress) {
+    if (ethersProvider && wallet && CONTRACT_ADDRESS) {
       try {
         const { ethers } = await import('ethers');
         const signer = ethersProvider.getSigner();
-        const contract = new ethers.Contract(contractAddress, CONTRACT_ABI, signer);
-        const tx = await contract.claimReward(reward);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        const routeId = ethers.utils.id(rewardRouteId);
+        const alreadyClaimed = await contract.claimedRouteIds(wallet, routeId);
+
+        if (alreadyClaimed) {
+          setTxStatus('Esa ruta ya fue reclamada por esta wallet. Se mantiene la demo y evitamos doble claim.');
+          setClaimLocked(true);
+          return;
+        }
+
+        const tx = await contract.claimReward(routeId, reward);
 
         setTxStatus('Transacción enviada por WalletConnect. Esperando confirmación...');
         setTxHash(tx.hash);
@@ -133,9 +155,11 @@ export default function HomePage() {
         await tx.wait();
 
         setTxStatus('Reward registrada on-chain correctamente.');
+        const updatedRewards = await contract.rewards(wallet);
+        setClaimedOnChain(Number(updatedRewards.toString()));
         addLedgerEntry({
           title: 'Contribución registrada on-chain',
-          body: `El usuario aceptó la ruta alternativa y reclamó ${reward} FLOW vía WalletConnect.`,
+          body: `El usuario aceptó la ruta alternativa y reclamó ${reward} FLOW vía WalletConnect para ${rewardRouteId}.`,
           hash: tx.hash,
           time
         });
@@ -264,6 +288,12 @@ export default function HomePage() {
                 <div className="mt-2 text-3xl font-black text-violet-300">{contributions}</div>
               </div>
             </div>
+
+            <div className="mt-4 text-xs text-slate-400">
+              {isContractReady
+                ? `Contrato listo en ${CONTRACT_ADDRESS.slice(0, 8)}...${CONTRACT_ADDRESS.slice(-6)}`
+                : 'Contrato no configurado aún. La app sigue operando en modo demo + fallback.'}
+            </div>
           </div>
         </div>
 
@@ -287,6 +317,9 @@ export default function HomePage() {
               <div className="text-xs uppercase tracking-wide text-slate-500">Registro de transacción</div>
               <div className="mt-2 text-sm text-slate-300">{txStatus}</div>
               <div className="mt-3 break-all font-mono text-xs text-cyan-300">{txHash}</div>
+              {claimedOnChain !== null ? (
+                <div className="mt-3 text-xs text-emerald-300">Rewards acumuladas on-chain: {claimedOnChain} FLOW</div>
+              ) : null}
             </div>
           </div>
 

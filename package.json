@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "compile:contract": "hardhat compile",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network baseSepolia"
   },
   "dependencies": {
     "@walletconnect/ethereum-provider": "2.23.9",
@@ -13,5 +15,10 @@
     "next": "14.2.15",
     "react": "18.3.1",
     "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "dotenv": "^16.6.1",
+    "hardhat": "^2.26.3"
   }
 }

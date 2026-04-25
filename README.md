@@ -6,7 +6,8 @@
 - Flujo de ruta alternativa -> reward -> claim
 - WalletConnect-first con project ID configurado
 - Fallback de simulación para no romper la demo
-- Soporta contrato real si luego agregas `contractAddress` en `app/page.js`
+- Smart contract Solidity incluido
+- Soporta contrato real con `NEXT_PUBLIC_CONTRACT_ADDRESS`
 
 ## Cómo correrlo
 ```bash
@@ -22,6 +23,30 @@ Luego abre:
 ```bash
 npm run build
 npm start
+```
+
+## Smart contract
+Compilar:
+```bash
+npm run compile:contract
+```
+
+Desplegar en Base Sepolia:
+```bash
+cp .env.example .env.local
+# agrega DEPLOYER_PRIVATE_KEY y, si quieres, BASE_SEPOLIA_RPC_URL
+npm run deploy:base-sepolia
+```
+
+Luego pega la address resultante en `.env.local`:
+```bash
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
+NEXT_PUBLIC_CHAIN_ID=84532
+```
+
+Y vuelve a levantar la app:
+```bash
+npm run dev
 ```
 
 ## Demo narrativa
